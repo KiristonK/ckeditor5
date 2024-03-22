@@ -247,8 +247,19 @@ export default class Title extends Plugin {
 		let changed = false;
 		const model = this.editor.model;
 
+		const titleConfig = this.editor.config.get( 'title' );
+
 		for ( const modelRoot of this.editor.model.document.getRoots() ) {
 			const titleElements = Array.from( modelRoot.getChildren() as IterableIterator<Element> ).filter( isTitle );
+			if ( titleConfig ) {
+				if ( titleConfig.config && titleConfig.config[ modelRoot.rootName ] == false ) {
+					for ( const el of titleElements ) {
+						changeTitleToHeading( el, writer, model );
+						changed = true;
+					}
+					continue;
+				}
+			}
 			const firstTitleElement = titleElements[ 0 ];
 			const firstRootChild = modelRoot.getChild( 0 ) as Element;
 
@@ -325,7 +336,12 @@ export default class Title extends Plugin {
 		for ( const rootName of this.editor.model.document.getRootNames() ) {
 			const root = this.editor.model.document.getRoot( rootName )!;
 			const placeholder = this._bodyPlaceholder.get( rootName )!;
-
+			const titleConfig = this.editor.config.get( 'title' );
+			const firstChild = root.getChild( 0 ) as Element;
+			if ( shouldRemoveFirstParagraph( firstChild, root, titleConfig ) ) {
+				writer.remove( firstChild );
+				changed = true;
+			}
 			if ( shouldRemoveLastParagraph( placeholder, root ) ) {
 				this._bodyPlaceholder.delete( rootName );
 				writer.remove( placeholder );
@@ -347,15 +363,25 @@ export default class Title extends Plugin {
 		const sourceElement = editor.sourceElement;
 
 		const titlePlaceholder = editor.config.get( 'title.placeholder' ) || t( 'Type your title' );
+		const titleConfig = editor.config.get( 'title.config' );
 		const bodyPlaceholder = editor.config.get( 'placeholder' ) ||
 			sourceElement && sourceElement.tagName.toLowerCase() === 'textarea' && sourceElement.getAttribute( 'placeholder' ) ||
 			t( 'Type or paste your content here.' );
-
 		// Attach placeholder to the view title element.
 		editor.editing.downcastDispatcher.on<DowncastInsertEvent<Element>>( 'insert:title-content', ( evt, data, conversionApi ) => {
 			const element: PlaceholderableElement = conversionApi.mapper.toViewElement( data.item )!;
 
-			element.placeholder = titlePlaceholder;
+			if ( titleConfig ) {
+				if ( titleConfig[ element.root.name ?? '' ] === false ) {
+					return;
+				}
+			}
+
+			if ( typeof titlePlaceholder == 'string' ) {
+				element.placeholder = titlePlaceholder;
+			} else if ( typeof ( titlePlaceholder[ element.root.name ?? '' ] ?? t( 'Type your title' ) ) == 'string' ) {
+				element.placeholder = ( titlePlaceholder[ element.root.name ?? '' ] ?? t( 'Type your title' ) ).toString();
+			}
 
 			enablePlaceholder( {
 				view,
@@ -388,8 +414,8 @@ export default class Title extends Plugin {
 						hidePlaceholder( writer, oldBody );
 						writer.removeAttribute( 'data-placeholder', oldBody );
 					}
-
-					writer.setAttribute( 'data-placeholder', bodyPlaceholder, body );
+					writer.setAttribute( 'data-placeholder',
+						typeof bodyPlaceholder == 'string' ? bodyPlaceholder : bodyPlaceholder[ viewRoot.rootName ], body );
 					bodyViewElements.set( viewRoot.rootName, body );
 
 					hasChanged = true;
@@ -534,6 +560,14 @@ function changeElementToTitle( element: Element, writer: Writer, model: Model ) 
 	model.schema.removeDisallowedAttributes( [ element ], writer );
 }
 
+function changeTitleToHeading( title: Element, writer: Writer, model: Model ) {
+	const element = title.getChild( 0 ) as Element;
+	writer.insert( element, title, 'after' );
+	writer.rename( element, 'heading3' );
+	model.schema.removeDisallowedAttributes( [ element ], writer );
+	writer.remove( title );
+}
+
 /**
  * Loops over the list of title elements and fixes additional ones.
  *
@@ -590,6 +624,24 @@ function shouldRemoveLastParagraph( placeholder: Element, root: RootElement ) {
 }
 
 /**
+ * Returns true when the first paragraph in the document was created only for the placeholder
+ * purpose and it's not needed anymore. Returns false otherwise.
+ */
+function shouldRemoveFirstParagraph( placeholder: Element, root: RootElement, titleConfig?: TitleConfig ) {
+	if ( !placeholder || !placeholder.is( 'element', 'paragraph' ) || placeholder.childCount ) {
+		return false;
+	}
+
+	if ( ( titleConfig && titleConfig.config && titleConfig.config[ root.rootName ] == true && root.childCount <= 2 ) ||
+		( titleConfig && titleConfig.config && titleConfig.config[ root.rootName ] == false && root.childCount <= 1 ) ||
+		root.getChild( root.childCount - 1 ) !== placeholder ) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
  * The configuration of the {@link module:heading/title~Title title feature}.
  *
  * ```ts
@@ -614,5 +666,10 @@ export interface TitleConfig {
 	 *
 	 * Read more in {@link module:heading/title~TitleConfig}.
 	 */
-	placeholder?: string;
+	placeholder?: string | Record<string, string>;
+
+	/**
+	 * Defines a configuration for the title, each field must correspond the Editors root
+	 */
+	config?: Record<string, boolean>;
 }

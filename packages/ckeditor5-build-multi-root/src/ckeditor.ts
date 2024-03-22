@@ -14,7 +14,7 @@ import { BlockQuote } from '@ckeditor/ckeditor5-block-quote';
 import { CKBox } from '@ckeditor/ckeditor5-ckbox';
 import { CKFinder } from '@ckeditor/ckeditor5-ckfinder';
 import { EasyImage } from '@ckeditor/ckeditor5-easy-image';
-import { Heading } from '@ckeditor/ckeditor5-heading';
+import { Heading, Title } from '@ckeditor/ckeditor5-heading';
 import { Image, ImageCaption, ImageStyle, ImageToolbar, ImageUpload, PictureEditing } from '@ckeditor/ckeditor5-image';
 import { Indent } from '@ckeditor/ckeditor5-indent';
 import { Link } from '@ckeditor/ckeditor5-link';
@@ -29,6 +29,7 @@ import { CloudServices } from '@ckeditor/ckeditor5-cloud-services';
 export default class MultiRootEditor extends MultiRootEditorBase {
 	public static override builtinPlugins = [
 		Essentials,
+		Title,
 		CKFinderUploadAdapter,
 		Autoformat,
 		Bold,
