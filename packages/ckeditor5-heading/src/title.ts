@@ -254,7 +254,7 @@ export default class Title extends Plugin {
 			if ( titleConfig ) {
 				if ( titleConfig.config && titleConfig.config[ modelRoot.rootName ] == false ) {
 					for ( const el of titleElements ) {
-						changeTitleToHeading( el, writer, model );
+						changeTitleToParagraph( el, writer, model );
 						changed = true;
 					}
 					continue;
@@ -336,12 +336,7 @@ export default class Title extends Plugin {
 		for ( const rootName of this.editor.model.document.getRootNames() ) {
 			const root = this.editor.model.document.getRoot( rootName )!;
 			const placeholder = this._bodyPlaceholder.get( rootName )!;
-			const titleConfig = this.editor.config.get( 'title' );
-			const firstChild = root.getChild( 0 ) as Element;
-			if ( shouldRemoveFirstParagraph( firstChild, root, titleConfig ) ) {
-				writer.remove( firstChild );
-				changed = true;
-			}
+
 			if ( shouldRemoveLastParagraph( placeholder, root ) ) {
 				this._bodyPlaceholder.delete( rootName );
 				writer.remove( placeholder );
@@ -560,10 +555,10 @@ function changeElementToTitle( element: Element, writer: Writer, model: Model ) 
 	model.schema.removeDisallowedAttributes( [ element ], writer );
 }
 
-function changeTitleToHeading( title: Element, writer: Writer, model: Model ) {
+function changeTitleToParagraph( title: Element, writer: Writer, model: Model ) {
 	const element = title.getChild( 0 ) as Element;
 	writer.insert( element, title, 'after' );
-	writer.rename( element, 'heading3' );
+	writer.rename( element, 'paragraph' );
 	model.schema.removeDisallowedAttributes( [ element ], writer );
 	writer.remove( title );
 }
@@ -634,7 +629,7 @@ function shouldRemoveFirstParagraph( placeholder: Element, root: RootElement, ti
 
 	if ( ( titleConfig && titleConfig.config && titleConfig.config[ root.rootName ] == true && root.childCount <= 2 ) ||
 		( titleConfig && titleConfig.config && titleConfig.config[ root.rootName ] == false && root.childCount <= 1 ) ||
-		root.getChild( root.childCount - 1 ) !== placeholder ) {
+		root.getChild( 0 ) !== placeholder ) {
 		return false;
 	}
 

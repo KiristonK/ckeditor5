@@ -8,9 +8,10 @@
 
 import * as MRE from '../../build/ckeditor.js';
 
-import CKEditorInspector from '@ckeditor/ckeditor5-inspector';
+import * as CKI from '../../../../node_modules/@ckeditor/ckeditor5-inspector/build/inspector.js';
 
 console.log( MRE );
+console.log( CKI );
 
 window.MultiRootEditor.create( {
 	header: document.getElementById( 'header' ),
@@ -38,7 +39,7 @@ window.MultiRootEditor.create( {
 
 } )
 	.then( editor => {
-		CKEditorInspector.attach( editor );
+		window.CKEditorInspector.attach( editor );
 		window.editor = editor;
 
 		document.getElementById( 'toolbar' ).appendChild( editor.ui.view.toolbar.element );
